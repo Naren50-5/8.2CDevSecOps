@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        EMAIL_RECIPIENT = "narenrajkumar1984@gmail.com"
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -16,7 +20,6 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                // Capture test output safely
                 sh '''
                     npm test 2>&1 | tee test-output.log || true
                 '''
@@ -42,15 +45,19 @@ pipeline {
 
     post {
         always {
+            echo "Sending email to ${env.EMAIL_RECIPIENT} with logs..."
             emailext (
                 subject: "Jenkins Pipeline: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
-                body: """<p>Hello,</p>
-                         <p>Your Jenkins pipeline has completed.</p>
-                         <p><b>Build Status:</b> ${currentBuild.currentResult}</p>
-                         <p>You can view the full console output here: 
-                            <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
-                         <p>Relevant logs are attached.</p>""",
-                to: "narenrajkumar1984@gmail.com",
+                body: """
+                    <p>Hello,</p>
+                    <p>Your Jenkins pipeline has completed.</p>
+                    <p><b>Build Status:</b> ${currentBuild.currentResult}</p>
+                    <p>Full console output: 
+                        <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a>
+                    </p>
+                    <p>Logs are attached.</p>
+                """,
+                to: "${env.EMAIL_RECIPIENT}",
                 mimeType: 'text/html',
                 attachmentsPattern: "test-output.log,npm-audit-output.log"
             )
