@@ -50,7 +50,7 @@ pipeline {
                          <p>You can view the full console output here: 
                             <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
                          <p>Relevant logs are attached.</p>""",
-                to: "narenadhithya6@gmail.com",
+                to: "narenrajkumar1984@gmail.com",
                 mimeType: 'text/html',
                 attachmentsPattern: "test-output.log,npm-audit-output.log"
             )
