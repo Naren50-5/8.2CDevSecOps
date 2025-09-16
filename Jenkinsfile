@@ -20,8 +20,11 @@ pipeline {
 
         stage('Run Tests') {
             steps {
+                // Run tests, fail build if tests fail
                 sh '''
-                    npm test 2>&1 | tee test-output.log || true
+                    npm test 2>&1 | tee test-output.log
+                    TEST_EXIT_CODE=${PIPESTATUS[0]}
+                    exit $TEST_EXIT_CODE
                 '''
                 archiveArtifacts artifacts: 'test-output.log', allowEmptyArchive: true
             }
@@ -41,6 +44,15 @@ pipeline {
                 archiveArtifacts artifacts: 'npm-audit-output.log', allowEmptyArchive: true
             }
         }
+
+        stage('Snyk Security Scan') {
+            steps {
+                sh '''
+                    snyk code test 2>&1 | tee snyk-output.log || true
+                '''
+                archiveArtifacts artifacts: 'snyk-output.log', allowEmptyArchive: true
+            }
+        }
     }
 
     post {
@@ -55,11 +67,16 @@ pipeline {
                     <p>Full console output: 
                         <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a>
                     </p>
-                    <p>Logs are attached.</p>
+                    <p>Relevant logs are attached:</p>
+                    <ul>
+                        <li>Test Output: test-output.log</li>
+                        <li>NPM Audit: npm-audit-output.log</li>
+                        <li>Snyk Scan: snyk-output.log</li>
+                    </ul>
                 """,
                 to: "${env.EMAIL_RECIPIENT}",
                 mimeType: 'text/html',
-                attachmentsPattern: "test-output.log,npm-audit-output.log"
+                attachmentsPattern: "test-output.log,npm-audit-output.log,snyk-output.log"
             )
         }
     }
