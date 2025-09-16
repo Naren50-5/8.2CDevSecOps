@@ -38,16 +38,15 @@ pipeline {
   post {
     always {
       emailext (
-        subject: "Build ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
-        body: """Hello,
-
-Your Jenkins pipeline has completed.
-
-Build Status: ${currentBuild.currentResult}
-
-Logs are attached for review.
-""",
+        subject: "Jenkins Pipeline: ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
+        body: """<p>Hello,</p>
+                 <p>Your Jenkins pipeline has completed.</p>
+                 <p><b>Build Status:</b> ${currentBuild.currentResult}</p>
+                 <p>You can view the full console output here: 
+                    <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                 <p>Relevant logs are attached.</p>""",
         to: "narenadhithya6@gmail.com",
+        mimeType: 'text/html',
         attachmentsPattern: "test-output.log,npm-audit-output.log"
       )
     }
