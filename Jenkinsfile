@@ -2,44 +2,48 @@ pipeline {
     agent any
 
     tools {
-        jdk "Java17"        // Jenkins JDK tool name
-        nodejs "NodeJS"     // Jenkins NodeJS tool name
+        nodejs 'NodeJS'      // NodeJS installation name in Jenkins
+        jdk 'Java17'         // JDK 17 installation name in Jenkins
     }
 
     environment {
-        SONAR_TOKEN = credentials('SONAR_TOKEN') // Use Jenkins credentials ID for SonarCloud token
+        SONAR_TOKEN = credentials('SONAR_TOKEN') // your SonarCloud token
     }
 
     stages {
-        stage('Checkout') {
+        stage('Verify Tools') {
             steps {
-                git branch: 'main', url: 'https://github.com/Naren50-5/8.2CDevSecOps.git'
+                sh 'java -version'
+                sh 'node -v'
+                sh 'npm -v'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                sh 'npm ci'
+                sh 'ls -la node_modules'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'npm test -- --coverage'
+                sh 'npm test -- --coverage --verbose'
             }
         }
 
         stage('SonarCloud Scan') {
             steps {
+                sh 'ls -la coverage'  // Verify lcov.info exists
                 sh """
-                npx sonar-scanner \
-                    -Dsonar.projectKey=Naren50-5_8.2CDevSecOps \
-                    -Dsonar.organization=Naren50-5 \
-                    -Dsonar.sources=. \
-                    -Dsonar.exclusions=node_modules/**,test/** \
-                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                    -Dsonar.host.url=https://sonarcloud.io \
-                    -Dsonar.login=$SONAR_TOKEN
+                    npx sonar-scanner \
+                        -Dsonar.projectKey=Naren50-5_8.2CDevSecOps \
+                        -Dsonar.organization=Naren50-5 \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=node_modules/**,test/** \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=$SONAR_TOKEN
                 """
             }
         }
@@ -47,13 +51,13 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline finished.'
+            junit '**/test-results/**/*.xml' // If you generate junit xml reports
         }
         success {
-            echo 'Pipeline succeeded!'
+            echo 'Pipeline finished successfully!'
         }
         failure {
-            echo 'Pipeline failed!'
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
