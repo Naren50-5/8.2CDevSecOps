@@ -7,7 +7,7 @@ pipeline {
   environment {
     GIT_URL  = 'https://github.com/Naren50-5/8.2CDevSecOps.git'
     EMAIL_TO = 'narenrajkumar1984@gmail.com'
-    NPM_CONFIG_CACHE = "${WORKSPACE}\\npm-cache"
+    NPM_CONFIG_CACHE = "${WORKSPACE}/npm-cache"
   }
 
   stages {
@@ -25,66 +25,49 @@ pipeline {
     stage('Install Dependencies') {
       steps {
         // If your repo lacks package-lock.json, switch to: npm install --no-audit --no-fund
-        bat 'npm ci --no-audit --no-fund'
+        sh 'npm ci --no-audit --no-fund'
       }
     }
 
     stage('Run Tests') {
       steps {
-        script {
-          // capture exit code but don't fail pipeline
-          def rc = bat(script: 'npm test', returnStatus: true)
-          env.TEST_STATUS = (rc == 0 ? 'SUCCESS' : "FAILURE (${rc})")
-        }
-      }
-      post {
-        always {
-          emailext(
-            subject: "Run Tests - ${env.TEST_STATUS}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            to: env.EMAIL_TO,
-            from: 'narenrajkumar1984@gmail.com',
-            mimeType: 'text/html',
-            body: """
-              <p>Stage <b>Run Tests</b> finished with: <b>${env.TEST_STATUS}</b>.</p>
-              <p><a href="${env.BUILD_URL}console">Console log</a></p>
-            """,
-            attachLog: true,
-            compressLog: true
-          )
-        }
+        // Run tests and redirect output to test.log; don't fail pipeline
+        sh 'npm test > test.log 2>&1 || true'
+        
+        // Archive test results
+        archiveArtifacts artifacts: 'test.log', allowEmptyArchive: true
+        
+        // Send email with test results
+        emailext(
+          subject: "Run Tests: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+          to: env.EMAIL_TO,
+          from: 'narenrajkumar1984@gmail.com',
+          body: "Stage Run Tests finished. See attached test.log",
+          attachmentsPattern: 'test.log'
+        )
       }
     }
 
     stage('Quick Security Audit') {
       steps {
-        script {
-          // write JSON report and capture exit code (npm audit often returns non-zero)
-          def rc = bat(script: 'npm audit --omit=dev --json > audit.json', returnStatus: true)
-          env.AUDIT_STATUS = (rc == 0 ? 'SUCCESS' : "FAILURE (${rc})")
-        }
-      }
-      post {
-        always {
-          emailext(
-            subject: "Security Audit - ${env.AUDIT_STATUS}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            to: env.EMAIL_TO,
-            from: 'narenrajkumar1984@gmail.com',
-            mimeType: 'text/html',
-            body: """
-              <p>Stage <b>Security Audit</b> finished with: <b>${env.AUDIT_STATUS}</b>.</p>
-              <p>Attached: <code>audit.json</code>. Full log zipped.</p>
-              <p><a href="${env.BUILD_URL}artifact/audit.json">audit.json</a></p>
-            """,
-            attachmentsPattern: 'audit.json',
-            attachLog: true,
-            compressLog: true
-          )
-        }
+        // Run npm audit and save output to audit.json; don't fail pipeline
+        sh 'npm audit --omit=dev --json > audit.json || true'
+        
+        // Archive audit report
+        archiveArtifacts artifacts: 'audit.json', allowEmptyArchive: true
+        
+        // Send email with audit report
+        emailext(
+          subject: "Security Audit: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+          to: env.EMAIL_TO,
+          from: 'narenrajkumar1984@gmail.com',
+          body: "Stage Quick Security Audit finished. See attached audit.json",
+          attachmentsPattern: 'audit.json'
+        )
       }
     }
   }
 
-  // Optional: a single wrap-up email for the whole build
   post {
     always {
       archiveArtifacts allowEmptyArchive: true, artifacts: 'audit.json'
