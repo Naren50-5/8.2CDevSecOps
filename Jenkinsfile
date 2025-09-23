@@ -1,29 +1,27 @@
 pipeline {
     agent any
     environment {
-        // Jenkins credential ID for SonarCloud token
-        SONAR_TOKEN = credentials('SONAR_TOKEN')
+        SONAR_TOKEN = credentials('SONAR_TOKEN') // Jenkins secret token ID
     }
     stages {
         // Stage 1: Checkout
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/your_github_username/8.2CDevSecOps.git'
+                git branch: 'main', url: 'https://github.com/Naren50-5/8.2CDevSecOps.git'
             }
         }
 
-        // Stage 2: Install Dependencies (Build)
+        // Stage 2: Install Dependencies
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
             }
         }
 
-        // Stage 3: Run Unit and Integration Tests
+        // Stage 3: Run Tests
         stage('Run Tests') {
             steps {
-                sh 'npm test > test.log 2>&1 || true'
-                archiveArtifacts artifacts: 'test.log', allowEmptyArchive: true
+                sh 'npm test || true'
             }
         }
 
@@ -31,15 +29,13 @@ pipeline {
         stage('Generate Coverage Report') {
             steps {
                 sh 'npm run coverage || true'
-                archiveArtifacts artifacts: 'coverage/**', allowEmptyArchive: true
             }
         }
 
         // Stage 5: NPM Audit (Security Scan)
         stage('NPM Audit') {
             steps {
-                sh 'npm audit --json > npm_audit.json || true'
-                archiveArtifacts artifacts: 'npm_audit.json', allowEmptyArchive: true
+                sh 'npm audit || true'
             }
         }
 
@@ -56,27 +52,6 @@ pipeline {
                         ./sonar-scanner-*/bin/sonar-scanner -Dsonar.login=$SONAR_TOKEN
                     '''
                 }
-            }
-        }
-
-        // Stage 7: Optional Deployment to Staging (placeholder)
-        stage('Deploy to Staging') {
-            steps {
-                echo 'Deploy to staging (e.g., SSH, Docker, or Ansible)'
-            }
-        }
-
-        // Stage 8: Integration Tests on Staging (placeholder)
-        stage('Integration Tests on Staging') {
-            steps {
-                echo 'Run integration tests on staging environment'
-            }
-        }
-
-        // Stage 9: Deploy to Production (placeholder)
-        stage('Deploy to Production') {
-            steps {
-                echo 'Deploy to production server'
             }
         }
     }
