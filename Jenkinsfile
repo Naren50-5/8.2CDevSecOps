@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('SONAR_TOKEN')  // Jenkins secret
+        SONAR_TOKEN = credentials('SONAR_TOKEN')
     }
 
     tools {
@@ -11,6 +11,18 @@ pipeline {
     }
 
     stages {
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh 'npm test -- --coverage'   // assumes coverage/lcov.info is generated
+            }
+        }
+
         stage('SonarCloud Scan') {
             steps {
                 script {
