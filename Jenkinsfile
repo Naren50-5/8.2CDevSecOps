@@ -15,6 +15,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
+                sh 'npm install --save-dev sonar-scanner'
             }
         }
 
@@ -39,17 +40,19 @@ pipeline {
             }
         }
 
-        // Stage 6: SonarCloud Analysis
+        // Stage 6: SonarCloud Analysis using npm SonarScanner
         stage('SonarCloud Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                     sh '''
-                        set -e
-                        echo "Downloading SonarScanner..."
-                        wget -qO sonar-scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip"
-                        unzip -q sonar-scanner.zip
-                        echo "Running SonarScanner..."
-                        ./sonar-scanner-*/bin/sonar-scanner -Dsonar.login=$SONAR_TOKEN
+                        npx sonar-scanner \
+                        -Dsonar.projectKey=Naren50-5_8.2CDevSecOps \
+                        -Dsonar.organization=Naren50-5 \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=node_modules/**,test/** \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=$SONAR_TOKEN
                     '''
                 }
             }
