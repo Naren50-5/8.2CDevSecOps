@@ -1,13 +1,13 @@
 pipeline {
     agent any
 
-    environment {
-        // Set Java 17 explicitly
-        JAVA_HOME = "/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home"
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+    // Ensure Jenkins uses the correct JDK from Global Tool Configuration
+    tools {
+        jdk 'Java17'   // Name of the JDK installation in Jenkins
+    }
 
-        // SonarCloud authentication token
-        SONAR_TOKEN = credentials('SONAR_TOKEN') // Make sure you add this in Jenkins Credentials
+    environment {
+        SONAR_TOKEN = credentials('SONAR_TOKEN') // Use Jenkins credentials
     }
 
     stages {
@@ -17,13 +17,7 @@ pipeline {
             }
         }
 
-        stage('Verify Java Version') {
-            steps {
-                sh 'java -version'
-            }
-        }
-
-        stage('Install Dependencies') {
+        stage('Install Node Modules') {
             steps {
                 sh 'npm install'
             }
@@ -32,25 +26,28 @@ pipeline {
         stage('Run SonarCloud Scan') {
             steps {
                 sh '''
-                npx sonar-scanner \
-                    -Dsonar.projectKey=Naren50-5_8.2CDevSecOps \
-                    -Dsonar.organization=Naren50-5 \
-                    -Dsonar.sources=. \
-                    -Dsonar.exclusions=node_modules/**,test/** \
-                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                    -Dsonar.host.url=https://sonarcloud.io \
-                    -Dsonar.login=$SONAR_TOKEN
+                    npx sonar-scanner \
+                        -Dsonar.projectKey=Naren50-5_8.2CDevSecOps \
+                        -Dsonar.organization=Naren50-5 \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=node_modules/**,test/** \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=$SONAR_TOKEN
                 '''
             }
         }
     }
 
     post {
+        always {
+            echo "Pipeline finished."
+        }
         success {
-            echo 'SonarCloud scan completed successfully.'
+            echo "SonarCloud scan completed successfully!"
         }
         failure {
-            echo 'SonarCloud scan failed.'
+            echo "Pipeline failed. Check the logs for details."
         }
     }
 }
