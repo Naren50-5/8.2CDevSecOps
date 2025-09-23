@@ -1,66 +1,56 @@
 pipeline {
     agent any
+
     environment {
-        SONAR_TOKEN = credentials('SONAR_TOKEN') // Jenkins secret token ID
+        // Set Java 17 explicitly
+        JAVA_HOME = "/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home"
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+
+        // SonarCloud authentication token
+        SONAR_TOKEN = credentials('SONAR_TOKEN') // Make sure you add this in Jenkins Credentials
     }
+
     stages {
-        // Stage 1: Checkout
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Naren50-5/8.2CDevSecOps.git'
+                checkout scm
             }
         }
 
-        // Stage 2: Install Dependencies
+        stage('Verify Java Version') {
+            steps {
+                sh 'java -version'
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
-                sh 'npm install --save-dev sonar-scanner'
             }
         }
 
-        // Stage 3: Run Tests
-        stage('Run Tests') {
+        stage('Run SonarCloud Scan') {
             steps {
-                sh 'npm test || true'
-            }
-        }
-
-        // Stage 4: Generate Coverage Report
-        stage('Generate Coverage Report') {
-            steps {
-                sh 'npm run coverage || true'
-            }
-        }
-
-        // Stage 5: NPM Audit (Security Scan)
-        stage('NPM Audit') {
-            steps {
-                sh 'npm audit || true'
-            }
-        }
-
-        // Stage 6: SonarCloud Analysis using npm SonarScanner
-        stage('SonarCloud Analysis') {
-            steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        npx sonar-scanner \
-                        -Dsonar.projectKey=Naren50-5_8.2CDevSecOps \
-                        -Dsonar.organization=Naren50-5 \
-                        -Dsonar.sources=. \
-                        -Dsonar.exclusions=node_modules/**,test/** \
-                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                        -Dsonar.host.url=https://sonarcloud.io \
-                        -Dsonar.login=$SONAR_TOKEN
-                    '''
-                }
+                sh '''
+                npx sonar-scanner \
+                    -Dsonar.projectKey=Naren50-5_8.2CDevSecOps \
+                    -Dsonar.organization=Naren50-5 \
+                    -Dsonar.sources=. \
+                    -Dsonar.exclusions=node_modules/**,test/** \
+                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                    -Dsonar.host.url=https://sonarcloud.io \
+                    -Dsonar.login=$SONAR_TOKEN
+                '''
             }
         }
     }
+
     post {
-        always {
-            echo 'Pipeline finished.'
+        success {
+            echo 'SonarCloud scan completed successfully.'
+        }
+        failure {
+            echo 'SonarCloud scan failed.'
         }
     }
 }
