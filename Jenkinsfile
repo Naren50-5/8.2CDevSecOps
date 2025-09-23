@@ -1,32 +1,35 @@
 pipeline {
     agent any
-    environment {
-        SONAR_TOKEN = credentials('SONAR_TOKEN') // Make sure this is configured in Jenkins credentials
+
+    tools {
+        jdk "Java17"        // Jenkins JDK tool name
+        nodejs "NodeJS"     // Jenkins NodeJS tool name
     }
+
+    environment {
+        SONAR_TOKEN = credentials('SONAR_TOKEN') // Use Jenkins credentials ID for SonarCloud token
+    }
+
     stages {
-        stage('Install Dependencies') {
-            tools {
-                nodejs "NodeJS"
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Naren50-5/8.2CDevSecOps.git'
             }
+        }
+
+        stage('Install Dependencies') {
             steps {
                 sh 'npm install'
             }
         }
 
         stage('Run Tests') {
-            tools {
-                nodejs "NodeJS"
-            }
             steps {
                 sh 'npm test -- --coverage'
             }
         }
 
         stage('SonarCloud Scan') {
-            tools {
-                java "Java17"
-                nodejs "NodeJS"
-            }
             steps {
                 sh """
                 npx sonar-scanner \
@@ -39,6 +42,18 @@ pipeline {
                     -Dsonar.login=$SONAR_TOKEN
                 """
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'Pipeline succeeded!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
