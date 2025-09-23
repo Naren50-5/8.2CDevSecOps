@@ -24,63 +24,61 @@ pipeline {
 
     stage('Install Dependencies') {
       steps {
-        // If your repo lacks package-lock.json, switch to: npm install --no-audit --no-fund
         sh 'npm ci --no-audit --no-fund'
       }
     }
 
     stage('Run Tests') {
       steps {
-        // Run tests and redirect output to test.log; don't fail pipeline
+        // Run tests, capture output to test.log, force success so pipeline continues
         sh 'npm test > test.log 2>&1 || true'
-        
-        // Archive test results
         archiveArtifacts artifacts: 'test.log', allowEmptyArchive: true
-        
-        // Send email with test results
-        emailext(
-          subject: "Run Tests: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-          to: env.EMAIL_TO,
-          from: 'narenrajkumar1984@gmail.com',
-          body: "Stage Run Tests finished. See attached test.log",
-          attachmentsPattern: 'test.log'
-        )
+      }
+      post {
+        always {
+          emailext(
+            subject: "Run Tests - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            to: env.EMAIL_TO,
+            body: "Stage Run Tests finished. See attached test.log",
+            attachmentsPattern: 'test.log'
+          )
+        }
       }
     }
 
     stage('Quick Security Audit') {
       steps {
-        // Run npm audit and save output to audit.json; don't fail pipeline
+        // Run npm audit, capture output to audit.json, force success so pipeline continues
         sh 'npm audit --omit=dev --json > audit.json || true'
-        
-        // Archive audit report
         archiveArtifacts artifacts: 'audit.json', allowEmptyArchive: true
-        
-        // Send email with audit report
-        emailext(
-          subject: "Security Audit: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-          to: env.EMAIL_TO,
-          from: 'narenrajkumar1984@gmail.com',
-          body: "Stage Quick Security Audit finished. See attached audit.json",
-          attachmentsPattern: 'audit.json'
-        )
+      }
+      post {
+        always {
+          emailext(
+            subject: "Security Audit - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            to: env.EMAIL_TO,
+            body: "Stage Quick Security Audit finished. See attached audit.json",
+            attachmentsPattern: 'audit.json'
+          )
+        }
       }
     }
   }
 
   post {
     always {
-      archiveArtifacts allowEmptyArchive: true, artifacts: 'audit.json'
+      // Final wrap-up email with full build info and logs attached
+      archiveArtifacts allowEmptyArchive: true, artifacts: 'audit.json,test.log'
       emailext(
         subject: "Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
         to: env.EMAIL_TO,
-        from: 'narenrajkumar1984@gmail.com',
         body: """Build result: ${currentBuild.currentResult}
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
-URL: ${env.BUILD_URL}""",
-        attachLog: true,
-        compressLog: true
+URL: ${env.BUILD_URL}
+
+Attached are the test and audit logs.""",
+        attachmentsPattern: 'test.log,audit.json'
       )
     }
   }
