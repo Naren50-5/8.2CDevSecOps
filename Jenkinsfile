@@ -30,25 +30,31 @@ pipeline {
 
     stage('Run Tests') {
       steps {
-        // Run tests, capture output to test.log, force success so pipeline continues
+        // Run tests, capture output, force success
         sh 'npm test > test.log 2>&1 || true'
         archiveArtifacts artifacts: 'test.log', allowEmptyArchive: true
       }
       post {
         always {
-          emailext(
-            subject: "Run Tests - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            to: env.EMAIL_TO,
-            body: "Stage Run Tests finished. See attached test.log",
-            attachmentsPattern: 'test.log'
-          )
+          script {
+            // Check if npm test just printed "no test specified"
+            def testOutput = readFile('test.log')
+            def warning = testOutput.contains("Error: no test specified") ? "\n\n⚠️ WARNING: No real tests specified in package.json." : ""
+            
+            emailext(
+              subject: "Run Tests - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+              to: env.EMAIL_TO,
+              body: "Stage Run Tests finished. See attached test.log${warning}",
+              attachmentsPattern: 'test.log'
+            )
+          }
         }
       }
     }
 
     stage('Quick Security Audit') {
       steps {
-        // Run npm audit, capture output to audit.json, force success so pipeline continues
+        // Run npm audit, capture output, force success
         sh 'npm audit --omit=dev --json > audit.json || true'
         archiveArtifacts artifacts: 'audit.json', allowEmptyArchive: true
       }
@@ -67,8 +73,8 @@ pipeline {
 
   post {
     always {
-      // Final wrap-up email with full build info and logs attached
-      archiveArtifacts allowEmptyArchive: true, artifacts: 'audit.json,test.log'
+      // Final wrap-up email with both logs attached
+      archiveArtifacts allowEmptyArchive: true, artifacts: 'test.log,audit.json'
       emailext(
         subject: "Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
         to: env.EMAIL_TO,
@@ -77,7 +83,9 @@ Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
 URL: ${env.BUILD_URL}
 
-Attached are the test and audit logs.""",
+Attached are the test and audit logs.
+
+⚠️ Note: If you see "Error: no test specified" in test.log, real tests are not yet implemented in package.json.""",
         attachmentsPattern: 'test.log,audit.json'
       )
     }
